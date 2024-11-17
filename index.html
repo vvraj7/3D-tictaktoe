@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Tic Tac Toe</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Set up scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Create a 3x3 grid (Tic Tac Toe board)
+        const gridHelper = new THREE.GridHelper(9, 3, 0x000000, 0xaaaaaa);
+        gridHelper.rotation.x = Math.PI / 2;
+        scene.add(gridHelper);
+
+        // Game objects
+        const playerXMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const playerOMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+        const sphereGeometry = new THREE.SphereGeometry(0.4, 32, 32);
+        const boxGeometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+
+        // Add X or O to the board
+        const gameState = Array(3).fill().map(() => Array(3).fill(null)); // 3x3 board
+        let currentPlayer = 'X'; // X starts
+
+        const addPiece = (x, y) => {
+            if (gameState[x][y]) return; // Prevent overwriting
+
+            const piece = currentPlayer === 'X'
+                ? new THREE.Mesh(boxGeometry, playerXMaterial)
+                : new THREE.Mesh(sphereGeometry, playerOMaterial);
+
+            piece.position.set(-4 + y * 3, 0.5, -4 + x * 3); // Adjust to grid
+            scene.add(piece);
+
+            gameState[x][y] = currentPlayer; // Update game state
+            currentPlayer = currentPlayer === 'X' ? 'O' : 'X'; // Switch player
+            checkWinner();
+        };
+
+        // Detect mouse clicks
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        window.addEventListener('click', (event) => {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObject(gridHelper, true);
+            if (intersects.length > 0) {
+                const point = intersects[0].point;
+                const x = Math.floor((point.z + 4.5) / 3);
+                const y = Math.floor((point.x + 4.5) / 3);
+                addPiece(x, y);
+            }
+        });
+
+        // Check for a winner
+        const checkWinner = () => {
+            // Check rows, columns, and diagonals
+            const lines = [
+                // Rows
+                [[0, 0], [0, 1], [0, 2]],
+                [[1, 0], [1, 1], [1, 2]],
+                [[2, 0], [2, 1], [2, 2]],
+                // Columns
+                [[0, 0], [1, 0], [2, 0]],
+                [[0, 1], [1, 1], [2, 1]],
+                [[0, 2], [1, 2], [2, 2]],
+                // Diagonals
+                [[0, 0], [1, 1], [2, 2]],
+                [[0, 2], [1, 1], [2, 0]],
+            ];
+
+            for (const line of lines) {
+                const [a, b, c] = line;
+                if (
+                    gameState[a[0]][a[1]] &&
+                    gameState[a[0]][a[1]] === gameState[b[0]][b[1]] &&
+                    gameState[a[0]][a[1]] === gameState[c[0]][c[1]]
+                ) {
+                    alert(`${gameState[a[0]][a[1]]} wins!`);
+                    resetGame();
+                    return;
+                }
+            }
+        };
+
+        // Reset game
+        const resetGame = () => {
+            while (scene.children.length > 0) {
+                scene.remove(scene.children[0]);
+            }
+            scene.add(gridHelper);
+            gameState.forEach(row => row.fill(null));
+            currentPlayer = 'X';
+        };
+
+        // Position camera
+        camera.position.set(5, 10, 10);
+        camera.lookAt(0, 0, 0);
+
+        // Render loop
+        const animate = () => {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        };
+        animate();
+    </script>
+</body>
+</html>
